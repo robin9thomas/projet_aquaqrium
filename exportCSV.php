@@ -1,33 +1,39 @@
 <?php
-$servername = "192.168.10.47";
-$username = "Aquarium";
-$password = "AquariumSN24";
-$dbname = "bdd_aquarium";
+require_once('config.php');
 
-$date = $_GET['date'];
+if (isset($_GET['id'])) {
 
-$conn = new mysqli($servername, $username, $password, $dbname);
+    $id = $_GET['id'];
+    $date = $_GET['date'];
 
-if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
+    $bassin = new bassin();
+    $details_bassin = $bassin->getById($id);
+    unset($bassin);
+
+    $donnee = new donnee();
+    $donnees = !empty($date) ? $donnee->getDataForCsv($id, $date) : $donnee->getByIdForCsv($id);
+    unset($donnee);
+
+ 
+
+    // Entêtes pour forcer le téléchargement du fichier
+    header('Content-Type: text/csv');
+    header('Content-Disposition: attachment; filename="'.$details_bassin["Nom_bassin"].'-'.date("d-m-y H\Hi").'.csv"');
+
+    // Ouverture du flux de sortie
+    $outstream = fopen("php://output", 'w');
+
+    // Entêtes de colonnes
+    fputcsv($outstream, array('Date', 'Température', 'PH', 'Nitrate'));
+
+    // Parcourir les données et les écrire dans le fichier CSV
+    foreach ($donnees as $donnee) {
+        fputcsv($outstream, $donnee);
+    }
+
+    // Fermeture du flux de sortie
+    fclose($outstream);
+
+
+
 }
-
-header('Content-Type: text/csv');
-header('Content-Disposition: attachment;filename=data_' . $date . '.csv');
-
-$output = fopen('php://output', 'w');
-fputcsv($output, array('ID'; 'Date'; 'Temperature'; 'pH'; 'Nitrate'));
-
-$sql = "SELECT * FROM Donnees WHERE date = ?";
-$stmt = $conn->prepare($sql);
-$stmt->bind_param("s", $date);
-$stmt->execute();
-$result = $stmt->get_result();
-
-while($row = $result->fetch_assoc()) {
-    fputcsv($output, $row);
-}
-
-fclose($output);
-$conn->close();
-?>
